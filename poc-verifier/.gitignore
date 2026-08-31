@@ -1,0 +1,9 @@
+# Local secrets — never commit real values
+.env
+
+# Dependencies / build output
+node_modules/
+dist/
+
+# Logs
+*.log

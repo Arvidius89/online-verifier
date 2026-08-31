@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>mDL Verifier (PoC)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>mDL Verifier <small>(proof of concept)</small></h1>
+
+    <!-- Panel 1: start -->
+    <section id="panel-start">
+      <p>
+        Request an ISO 18013-5 mobile driving licence (mDL) presentation from
+        an EUDI-compatible wallet using OpenID4VP.
+      </p>
+      <button id="btn-request" type="button">Request mDL</button>
+    </section>
+
+    <!-- Panel 2: QR code (Milestone 2 fills this in) -->
+    <section id="panel-qr" hidden>
+      <p>Scan this QR code with your wallet:</p>
+      <img id="qr-image" alt="OpenID4VP authorization request QR code" />
+      <p><code id="request-uri"></code></p>
+      <p id="qr-countdown" aria-live="polite"></p>
+    </section>
+
+    <!-- Panel 3: result (Milestone 3 fills this in) -->
+    <section id="panel-result" hidden>
+      <h2 id="result-heading">Result</h2>
+      <div id="result-body" aria-live="polite"></div>
+      <button id="btn-new-request" type="button">Request another mDL</button>
+    </section>
+
+    <p id="status-line" role="status" aria-live="polite"></p>
+  </main>
+  <script src="app.js" type="module"></script>
+</body>
+</html>

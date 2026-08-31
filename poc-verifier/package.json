@@ -1,0 +1,23 @@
+{
+  "name": "poc-verifier",
+  "version": "0.1.0",
+  "description": "Minimal OpenID4VP verifier PoC for mDL credentials (built on @openeudi/openid4vp)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@openeudi/openid4vp": "file:..",
+    "dotenv": "^17.2.1",
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.5",
+    "vitest": "^4.0.18"
+  }
+}

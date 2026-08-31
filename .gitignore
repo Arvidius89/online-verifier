@@ -1,5 +1,33 @@
+# Dependencies
 node_modules/
-dist/
+
+# Build output
+/dist/
 coverage/
 .turbo/
 *.tsbuildinfo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Local trust material and certificates
+trusted-issuers/
+*.pem
+*.crt
+*.cer
+*.der
+*.key
+
+# Test and runtime artifacts
+*.log
+npm-debug.log*
+.vitest/
+
+# Editor / OS junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
