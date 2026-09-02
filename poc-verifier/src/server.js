@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import { StaticTrustStore } from '@openeudi/openid4vp';
 
 import { loadConfig } from './config.js';
 import { SessionStore } from './services/sessionStore.js';
@@ -22,7 +23,7 @@ function getDefaultConfig() {
 export function createApp(cfg = getDefaultConfig(), dependencies = {}) {
     const app = express();
     const sessionStore = new SessionStore({ ttlMs: cfg.sessionTtlMs });
-    const trustedCertificates = dependencies.trustedCertificates ?? [];
+    const trustStore = dependencies.trustStore ?? new StaticTrustStore([]);
 
     app.disable('x-powered-by');
     app.use(express.urlencoded({ extended: false, limit: '1mb' }));
@@ -32,7 +33,7 @@ export function createApp(cfg = getDefaultConfig(), dependencies = {}) {
     app.use(responseRoutes({
         config: cfg,
         sessionStore,
-        trustedCertificates,
+        trustStore,
         verifyResponse: dependencies.verifyResponse,
     }));
     app.use(statusRoutes({ sessionStore }));
@@ -55,7 +56,8 @@ export function createApp(cfg = getDefaultConfig(), dependencies = {}) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
     const config = loadConfig(); // fails fast on missing/invalid env (PROJECT_PLAN.md §3.1)
     const trustedIssuers = loadTrustedIssuers(config.trustedIssuersDir);
-    const app = createApp(config, { trustedCertificates: trustedIssuers });
+    const trustStore = new StaticTrustStore(trustedIssuers);
+    const app = createApp(config, { trustStore });
     const server = app.listen(config.port, () => {
         const { port } = server.address();
         console.log(`[poc-verifier] listening on port ${port}`);

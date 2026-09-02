@@ -10,7 +10,7 @@ const session = {
 };
 
 const transcript = new Uint8Array([1, 2, 3]);
-const trustedCertificates = [new Uint8Array([4, 5, 6])];
+const trustStore = { getAnchors: async () => [] };
 
 describe('verifyResponse', () => {
     it('binds the session values and trust set to verification', async () => {
@@ -32,19 +32,20 @@ describe('verifyResponse', () => {
                 mdocSessionTranscript: transcript,
                 nonce: session.nonce,
                 responseUri: session.responseUri,
-                trustedCertificates,
+                trustedCertificates: [],
+                trustStore,
             });
             return result;
         };
 
-        await expect(verifyResponse(session, envelope, trustedCertificates, {
+        await expect(verifyResponse(session, envelope, trustStore, {
             buildSessionTranscript,
             verifyAuthorizationResponse,
         })).resolves.toEqual({ result });
     });
 
     it('maps an invalid verification result to a safe failure', async () => {
-        await expect(verifyResponse(session, {}, trustedCertificates, {
+        await expect(verifyResponse(session, {}, trustStore, {
             buildSessionTranscript: async () => transcript,
             verifyAuthorizationResponse: async () => ({
                 valid: false,
@@ -57,8 +58,33 @@ describe('verifyResponse', () => {
         });
     });
 
+    it('forwards session.allowDigestMismatch to the library and surfaces digestMismatchIgnored', async () => {
+        const envelope = { vp_token: { mdl: ['token'] } };
+        const verifyAuthorizationResponse = async (_envelope, _query, options) => {
+            expect(options.allowDigestMismatch).toBe(true);
+            return {
+                valid: true,
+                parsed: { claims: {}, digestMismatchIgnored: true, digestLog: [{ match: false }] },
+                match: {},
+            };
+        };
+
+        await expect(verifyResponse(
+            { ...session, allowDigestMismatch: true },
+            envelope,
+            trustStore,
+            { buildSessionTranscript: async () => transcript, verifyAuthorizationResponse },
+        )).resolves.toEqual({
+            result: {
+                valid: true,
+                parsed: { claims: {}, digestMismatchIgnored: true, digestLog: [{ match: false }] },
+                match: {},
+            },
+        });
+    });
+
     it('leaves malformed envelopes as TypeError for the route to reject', async () => {
-        await expect(verifyResponse(session, {}, trustedCertificates, {
+        await expect(verifyResponse(session, {}, trustStore, {
             buildSessionTranscript: async () => transcript,
             verifyAuthorizationResponse: async () => {
                 throw new TypeError('envelope is malformed');

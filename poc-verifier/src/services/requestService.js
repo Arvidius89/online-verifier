@@ -12,9 +12,11 @@ import { buildMdlQuery } from './queryBuilder.js';
  *
  * @param {object} config validated app config (clientId, responseUri, mdlClaims)
  * @param {import('./sessionStore.js').SessionStore} sessionStore
+ * @param {object} [opts]
+ * @param {boolean} [opts.allowDigestMismatch=false] DEBUG ONLY — see ParseOptions.allowDigestMismatch
  * @returns {{ uri: string, state: string, nonce: string, session: object }}
  */
-export function createPresentationRequest(config, sessionStore) {
+export function createPresentationRequest(config, sessionStore, { allowDigestMismatch = false } = {}) {
     const query = buildMdlQuery(config.mdlClaims);
 
     const request = createAuthorizationRequest(
@@ -33,6 +35,7 @@ export function createPresentationRequest(config, sessionStore) {
         clientId: config.clientId,
         responseUri: config.responseUri,
         query: request.dcqlQuery,
+        allowDigestMismatch,
     });
 
     return {

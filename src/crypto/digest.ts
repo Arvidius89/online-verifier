@@ -1,8 +1,13 @@
 import { Encoder as CborEncoder, Tag } from 'cbor-x';
 
-import { MalformedCredentialError } from '../errors.js';
+import { DigestMismatchError, MalformedCredentialError } from '../errors.js';
+import type { DigestLogEntry } from '../errors.js';
 
 import type { MobileSecurityObject } from './mso.js';
+
+function bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 // Decoder that preserves CBOR maps as JS Maps (cbor-x default converts them to objects).
 const decoder = new CborEncoder({ mapsAsObjects: false, useRecords: false });
@@ -72,17 +77,19 @@ function unwrapItemMap(itemBytes: Uint8Array): Map<string, unknown> {
 }
 
 /**
- * Verifies every IssuerSignedItem across every namespace against the MSO's valueDigests.
- * All items must match — no partial acceptance.
+ * Computes the per-attribute digest log for every IssuerSignedItem across every
+ * namespace: the digest the MSO expects vs. the digest the verifier computes from
+ * the presented item bytes. Does not throw on mismatch — callers decide policy.
  *
  * @param nameSpaces  Per-namespace arrays of tag-24-wrapped IssuerSignedItem bytes
  *                    (exactly the bytes used as digest input during issuance).
  * @param mso         Decoded MobileSecurityObject carrying the expected valueDigests.
  */
-export async function verifyAllDigests(
+export async function buildDigestLog(
     nameSpaces: Map<string, Uint8Array[]>,
     mso: MobileSecurityObject
-): Promise<void> {
+): Promise<DigestLogEntry[]> {
+    const log: DigestLogEntry[] = [];
     for (const [ns, items] of nameSpaces) {
         const expected = mso.valueDigests.get(ns);
         if (!expected) {
@@ -92,20 +99,52 @@ export async function verifyAllDigests(
             // Hash the raw tag-24 bytes — this is what the issuer hashed during issuance.
             const hash = await computeItemDigest(itemBytes, mso.digestAlgorithm);
 
-            // Decode to extract digestID for lookup.
             const item = unwrapItemMap(itemBytes);
             const digestID = item.get('digestID');
             if (typeof digestID !== 'number') {
                 throw new MalformedCredentialError('IssuerSignedItem missing digestID');
             }
+            const elementIdentifier = item.get('elementIdentifier');
 
             const expectedDigest = expected.get(digestID);
             if (!expectedDigest) {
                 throw new MalformedCredentialError(`digestID ${digestID} missing from MSO valueDigests[${ns}]`);
             }
-            if (!bytesEqual(hash, expectedDigest)) {
-                throw new MalformedCredentialError(`digest mismatch for ns=${ns} digestID=${digestID}`);
-            }
+
+            log.push({
+                namespace: ns,
+                elementIdentifier: typeof elementIdentifier === 'string' ? elementIdentifier : `unknown(${digestID})`,
+                digestID,
+                expectedDigestHex: bytesToHex(expectedDigest),
+                computedDigestHex: bytesToHex(hash),
+                match: bytesEqual(hash, expectedDigest),
+            });
         }
     }
+    return log;
+}
+
+/**
+ * Verifies every IssuerSignedItem across every namespace against the MSO's valueDigests.
+ * All items must match — no partial acceptance. On mismatch, throws a
+ * `DigestMismatchError` carrying the full per-attribute log for diagnostics.
+ *
+ * @param nameSpaces  Per-namespace arrays of tag-24-wrapped IssuerSignedItem bytes
+ *                    (exactly the bytes used as digest input during issuance).
+ * @param mso         Decoded MobileSecurityObject carrying the expected valueDigests.
+ * @returns the full per-attribute digest log when all digests match.
+ */
+export async function verifyAllDigests(
+    nameSpaces: Map<string, Uint8Array[]>,
+    mso: MobileSecurityObject
+): Promise<DigestLogEntry[]> {
+    const log = await buildDigestLog(nameSpaces, mso);
+    const mismatches = log.filter((entry) => !entry.match);
+    if (mismatches.length > 0) {
+        const summary = mismatches
+            .map((m) => `ns=${m.namespace} attr=${m.elementIdentifier} digestID=${m.digestID}`)
+            .join(', ');
+        throw new DigestMismatchError(`digest mismatch for: ${summary}`, log);
+    }
+    return log;
 }

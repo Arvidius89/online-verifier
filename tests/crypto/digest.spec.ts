@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { decodeCoseSign1 } from '../../src/crypto/cose-sign1.js';
 import { computeItemDigest, verifyAllDigests } from '../../src/crypto/digest.js';
 import { decodeMso } from '../../src/crypto/mso.js';
-import { MalformedCredentialError } from '../../src/errors.js';
+import { DigestMismatchError, MalformedCredentialError } from '../../src/errors.js';
 import { wrapIssuerSignedItemBytes } from '../../src/parsers/mdoc.parser.js';
 import { generateTestKeyMaterial } from '../fixtures/crypto-helpers.js';
 import { buildSignedMdoc } from '../fixtures/mdoc-helpers.js';
@@ -44,7 +44,9 @@ describe('verifyAllDigests', () => {
         });
         const mso = decodeMso(decodeCoseSign1(issuerAuth).payload);
         const ns = new Map<string, Uint8Array[]>(Object.entries(itemBytesByNamespace));
-        await expect(verifyAllDigests(ns, mso)).resolves.toBeUndefined();
+        const log = await verifyAllDigests(ns, mso);
+        expect(log.length).toBe(2);
+        expect(log.every((entry) => entry.match)).toBe(true);
     });
 
     it('throws when namespace has no valueDigests entry in MSO', async () => {
@@ -197,5 +199,34 @@ describe('verifyAllDigests', () => {
 
         const ns = new Map<string, Uint8Array[]>([['eu.europa.ec.eudi.pid.1', [tamperedItemBytes]]]);
         await expect(verifyAllDigests(ns, mso)).rejects.toThrow(/digest mismatch/);
+    });
+
+    it('DigestMismatchError carries a per-attribute digest log with the mismatching entry flagged', async () => {
+        const key = await generateTestKeyMaterial();
+        const { issuerAuth, itemBytesByNamespace } = await buildSignedMdoc({
+            issuerKey: key,
+            namespaces: { 'eu.europa.ec.eudi.pid.1': { age_over_18: true, family_name: 'Doe' } },
+        });
+        const mso = decodeMso(decodeCoseSign1(issuerAuth).payload);
+        const items = [...itemBytesByNamespace['eu.europa.ec.eudi.pid.1']!];
+
+        const decoded = cbor.decode(items[0]!) as { value: Uint8Array };
+        const innerMap = cbor.decode(decoded.value) as Map<string, unknown>;
+        innerMap.set('elementValue', 'Eve');
+        items[0] = cbor.encode(new Tag(cbor.encode(innerMap), 24));
+
+        const ns = new Map([['eu.europa.ec.eudi.pid.1', items]]);
+        try {
+            await verifyAllDigests(ns, mso);
+            expect.unreachable('expected DigestMismatchError');
+        } catch (err) {
+            expect(err).toBeInstanceOf(DigestMismatchError);
+            const digestLog = (err as DigestMismatchError).digestLog;
+            expect(digestLog.length).toBe(2);
+            const mismatched = digestLog.filter((e) => !e.match);
+            expect(mismatched.length).toBe(1);
+            expect(mismatched[0]?.expectedDigestHex).not.toBe(mismatched[0]?.computedDigestHex);
+            expect(digestLog.filter((e) => e.match).length).toBe(1);
+        }
     });
 });

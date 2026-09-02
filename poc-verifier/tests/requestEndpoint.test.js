@@ -52,6 +52,13 @@ describe('GET /api/request', () => {
             path: ['org.iso.18013.5.1', 'family_name'],
         });
     });
+
+    it('accepts the ignoreDigestErrors debug toggle without changing the response shape', async () => {
+        const { status, body } = await getJson(createApp(config), '/api/request?ignoreDigestErrors=true');
+
+        expect(status).toBe(200);
+        expect(body.state).toMatch(/^[0-9a-f-]{36}$/);
+    });
 });
 
 describe('GET /api/status/:state', () => {

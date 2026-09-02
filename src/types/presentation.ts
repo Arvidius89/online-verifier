@@ -32,8 +32,21 @@ export interface PresentationResult {
      * `trustStore` was not provided.
      */
     trust?: TrustEvaluationResult;
+    /**
+     * Per-attribute mdoc digest verification log (expected vs. computed digest per
+     * IssuerSignedItem). Populated for `mdoc` format regardless of overall outcome,
+     * so wallet-side digest issues can be diagnosed. Omitted for `sd-jwt-vc`.
+     */
+    digestLog?: DigestLogEntry[];
+    /**
+     * `true` when `ParseOptions.allowDigestMismatch` was set and one or more
+     * mdoc digests actually mismatched. Consumers MUST treat such a result as
+     * untrusted/unverified regardless of `valid`, and surface this prominently.
+     */
+    digestMismatchIgnored?: boolean;
 }
 
 import type { IssuerInfo } from './issuer.js';
 import type { TrustEvaluationResult } from '../trust/TrustEvaluator.js';
+import type { DigestLogEntry } from '../errors.js';
 export type { IssuerInfo } from './issuer.js';

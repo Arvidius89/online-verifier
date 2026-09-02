@@ -342,4 +342,51 @@ describe('MdocParser', () => {
             expect(result.valid).toBe(true);
         });
     });
+
+    // ------------------------------------------------------------------
+    // parse — allowDigestMismatch (debug toggle)
+    // ------------------------------------------------------------------
+
+    describe('parse — allowDigestMismatch', () => {
+        /** Tampers the first item's elementValue in-place in the full DeviceResponse bytes. */
+        function tamperFirstItem(mdocBytes: Uint8Array, namespace: string): Uint8Array {
+            const deviceResponse = cbor.decode(mdocBytes) as Map<string, unknown>;
+            const documents = deviceResponse.get('documents') as unknown[];
+            const document = documents[0] as Map<string, unknown>;
+            const issuerSigned = document.get('issuerSigned') as Map<string, unknown>;
+            const nameSpaces = issuerSigned.get('nameSpaces') as Map<string, { value: Uint8Array }[]>;
+            const wrapped = nameSpaces.get(namespace)![0]!;
+            const innerMap = cbor.decode(wrapped.value) as Map<string, unknown>;
+            innerMap.set('elementValue', 'TAMPERED');
+            wrapped.value = cbor.encode(innerMap);
+            return cbor.encode(deviceResponse);
+        }
+
+        it('fails closed by default when a digest mismatches', async () => {
+            const built = await buildSignedMdoc({
+                issuerKey,
+                namespaces: { 'eu.europa.ec.eudi.pid.1': { age_over_18: true, family_name: 'Doe' } },
+            });
+            const tampered = tamperFirstItem(built.mdocBytes, 'eu.europa.ec.eudi.pid.1');
+            const result = await parser.parse(tampered, trustedOptions());
+            expect(result.valid).toBe(false);
+            expect(result.digestLog?.some((e) => !e.match)).toBe(true);
+            expect(result.digestMismatchIgnored).toBeUndefined();
+        });
+
+        it('continues past the mismatch and returns claims when allowDigestMismatch: true', async () => {
+            const built = await buildSignedMdoc({
+                issuerKey,
+                namespaces: { 'eu.europa.ec.eudi.pid.1': { age_over_18: true, family_name: 'Doe' } },
+            });
+            const tampered = tamperFirstItem(built.mdocBytes, 'eu.europa.ec.eudi.pid.1');
+            const result = await parser.parse(tampered, trustedOptions({ allowDigestMismatch: true }));
+            expect(result.valid).toBe(true);
+            expect(result.digestMismatchIgnored).toBe(true);
+            expect(result.digestLog?.some((e) => !e.match)).toBe(true);
+            // The tampered value is still surfaced to the caller — that's the point of the toggle.
+            expect(result.claims.age_over_18).toBe('TAMPERED');
+            expect((result.claims as Record<string, unknown>).family_name).toBe('Doe');
+        });
+    });
 });

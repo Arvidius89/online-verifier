@@ -10,9 +10,10 @@ import { createPresentationRequest } from '../services/requestService.js';
 export function requestRoutes({ config, sessionStore }) {
     const router = Router();
 
-    router.get('/api/request', async (_req, res, next) => {
+    router.get('/api/request', async (req, res, next) => {
         try {
-            const { uri, state } = createPresentationRequest(config, sessionStore);
+            const allowDigestMismatch = req.query.ignoreDigestErrors === 'true';
+            const { uri, state } = createPresentationRequest(config, sessionStore, { allowDigestMismatch });
 
             // Server-side QR as PNG data URL — zero frontend dependencies.
             const qr = await QRCode.toDataURL(uri, {

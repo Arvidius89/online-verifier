@@ -5,7 +5,7 @@ import { decodeCoseSign1, verifyCoseSign1 } from '../crypto/cose-sign1.js';
 import { verifyDeviceAuth } from '../crypto/device-auth.js';
 import { verifyAllDigests } from '../crypto/digest.js';
 import { decodeMso, validateMsoValidity, validateMsoDocType } from '../crypto/mso.js';
-import { MalformedCredentialError, ExpiredCredentialError } from '../errors.js';
+import { MalformedCredentialError, ExpiredCredentialError, DigestMismatchError } from '../errors.js';
 import type { TrustEvaluationResult } from '../trust/TrustEvaluator.js';
 import type { IssuerInfo } from '../types/issuer.js';
 import type { CredentialFormat, CredentialClaims, PresentationResult } from '../types/presentation.js';
@@ -373,7 +373,30 @@ export class MdocParser implements ICredentialParser {
             }
             nameSpaces.set(ns, items.map(extractRawItemBytes));
         }
-        await verifyAllDigests(nameSpaces, mso);
+        let digestLog;
+        let digestMismatchIgnored = false;
+        try {
+            digestLog = await verifyAllDigests(nameSpaces, mso);
+        } catch (err) {
+            if (err instanceof DigestMismatchError) {
+                if (options.allowDigestMismatch === true) {
+                    // DEBUG ONLY: fall through instead of failing closed — caller opted in.
+                    digestLog = err.digestLog;
+                    digestMismatchIgnored = true;
+                } else {
+                    return {
+                        valid: false,
+                        format: this.format,
+                        claims: {},
+                        issuer: { certificate: issuerCertBytes, country: '' },
+                        error: err.message,
+                        digestLog: err.digestLog,
+                    };
+                }
+            } else {
+                throw err;
+            }
+        }
 
         // Step 7.5: Device authentication (ISO 18013-5 §9.1.3) — holder proof-of-
         // possession. Without this an attacker who captures another holder's
@@ -443,8 +466,10 @@ export class MdocParser implements ICredentialParser {
             issuer,
             docType: mso.docType,
             namespacedClaims,
+            digestLog,
         };
         if (trustResult) result.trust = trustResult;
+        if (digestMismatchIgnored) result.digestMismatchIgnored = true;
         return result;
     }
 }

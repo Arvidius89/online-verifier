@@ -40,7 +40,7 @@ export class SessionStore {
      * library, so a collision would indicate a bug or an attack.
      * @returns the stored session
      */
-    create({ state, nonce, clientId, responseUri, query }) {
+    create({ state, nonce, clientId, responseUri, query, allowDigestMismatch = false }) {
         if (!state || !nonce || !query) {
             throw new TypeError('state, nonce and query are required');
         }
@@ -53,6 +53,7 @@ export class SessionStore {
             clientId,
             responseUri,
             query,
+            allowDigestMismatch,
             createdAt: this.#now(),
             expiresAt: this.#now() + this.#ttlMs,
             status: 'pending',
@@ -85,7 +86,7 @@ export class SessionStore {
      * the session is missing, expired, or already completed (one-shot
      * enforcement — replays are silently dropped by the caller).
      */
-    complete(state, { result, error, unmatched }) {
+    complete(state, { result, error, unmatched, digestLog, digestMismatchIgnored }) {
         const session = this.#sessions.get(state);
         if (!session) return false;
         if (session.status !== 'pending') return false;
@@ -98,6 +99,8 @@ export class SessionStore {
             session.status = 'failed';
             session.error = error;
             session.unmatched = unmatched;
+            session.digestLog = digestLog;
+            session.digestMismatchIgnored = digestMismatchIgnored;
         } else {
             session.status = 'done';
             session.result = result;

@@ -13,6 +13,7 @@ const requestUri = document.getElementById('request-uri');
 const qrCountdown = document.getElementById('qr-countdown');
 const resultHeading = document.getElementById('result-heading');
 const resultBody = document.getElementById('result-body');
+const ignoreDigestErrorsToggle = document.getElementById('toggle-ignore-digest-errors');
 
 const POLL_INTERVAL_MS = 2000;
 let pollTimer = null;
@@ -83,9 +84,56 @@ function startPolling(state, expiresInSeconds) {
     void pollStatus(state);
 }
 
+function renderDigestLog(digestLog) {
+    const details = document.createElement('details');
+    details.className = 'digest-log';
+    details.open = digestLog.some((entry) => !entry.match);
+    const summary = document.createElement('summary');
+    const mismatchCount = digestLog.filter((entry) => !entry.match).length;
+    summary.textContent = mismatchCount > 0
+        ? `Digest verification: ${mismatchCount} of ${digestLog.length} attribute(s) mismatched`
+        : `Digest verification: all ${digestLog.length} attribute(s) matched`;
+    details.append(summary);
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Namespace</th><th>Attribute</th><th>Digest ID</th>'
+        + '<th>Expected digest (MSO)</th><th>Computed digest</th><th>Match</th></tr>';
+    const tbody = document.createElement('tbody');
+    for (const entry of digestLog) {
+        const row = document.createElement('tr');
+        if (!entry.match) row.className = 'digest-mismatch';
+        row.append(
+            makeCell(entry.namespace),
+            makeCell(entry.elementIdentifier),
+            makeCell(String(entry.digestID)),
+            makeCell(entry.expectedDigestHex, true),
+            makeCell(entry.computedDigestHex, true),
+            makeCell(entry.match ? '✓' : '✗'),
+        );
+        tbody.append(row);
+    }
+    table.append(thead, tbody);
+    details.append(table);
+    return details;
+}
+
+function makeCell(text, mono = false) {
+    const cell = document.createElement('td');
+    cell.textContent = text;
+    if (mono) cell.className = 'digest-hex';
+    return cell;
+}
+
 function showResult(ok, error, data) {
     showPanel('result');
     resultBody.replaceChildren();
+    if (data?.digestMismatchIgnored) {
+        const banner = document.createElement('p');
+        banner.className = 'insecure-banner';
+        banner.textContent = '⚠ Digest verification was bypassed — this result is NOT trustworthy.';
+        resultBody.append(banner);
+    }
     if (ok) {
         resultHeading.textContent = 'Credential verified';
         const claims = data.claims ?? {};
@@ -117,6 +165,9 @@ function showResult(ok, error, data) {
         const issuer = data.issuer?.subject ?? data.issuer?.country ?? 'Unknown issuer';
         metadata.textContent = `${data.docType ?? 'Unknown document type'} · ${issuer}`;
         resultBody.append(metadata);
+        if (data.digestLog?.length) {
+            resultBody.append(renderDigestLog(data.digestLog));
+        }
         setStatus('');
     } else {
         resultHeading.textContent = 'Verification failed';
@@ -133,6 +184,9 @@ function showResult(ok, error, data) {
             }
             resultBody.append(unmatched);
         }
+        if (data?.digestLog?.length) {
+            resultBody.append(renderDigestLog(data.digestLog));
+        }
         setStatus('');
     }
 }
@@ -140,7 +194,9 @@ function showResult(ok, error, data) {
 async function requestPresentation() {
     setStatus('Creating authorization request…');
     try {
-        const res = await fetch('/api/request');
+        const ignoreDigestErrors = ignoreDigestErrorsToggle?.checked === true;
+        const url = `/api/request?ignoreDigestErrors=${ignoreDigestErrors}`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`server responded ${res.status}`);
         const { state, qr, uri, expiresInSeconds } = await res.json();
 

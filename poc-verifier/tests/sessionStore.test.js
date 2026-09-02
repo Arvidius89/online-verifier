@@ -21,6 +21,13 @@ describe('SessionStore', () => {
         const session = store.get('state-1');
         expect(session.status).toBe('pending');
         expect(session.nonce).toBe('nonce-1');
+        expect(session.allowDigestMismatch).toBe(false);
+    });
+
+    it('stores an explicit allowDigestMismatch flag', () => {
+        const store = makeStore();
+        store.create({ ...baseSession, allowDigestMismatch: true });
+        expect(store.get('state-1').allowDigestMismatch).toBe(true);
     });
 
     it('rejects creation without required fields', () => {

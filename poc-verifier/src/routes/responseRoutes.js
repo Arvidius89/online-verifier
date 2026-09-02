@@ -23,7 +23,7 @@ function responseEnvelope(vpToken, query) {
 }
 
 /** POST /response — accept and verify an unencrypted OpenID4VP direct_post response. */
-export function responseRoutes({ config, sessionStore, trustedCertificates, verifyResponse = defaultVerifyResponse }) {
+export function responseRoutes({ config, sessionStore, trustStore, verifyResponse = defaultVerifyResponse }) {
     const router = Router();
 
     router.post('/response', async (req, res, next) => {
@@ -52,7 +52,7 @@ export function responseRoutes({ config, sessionStore, trustedCertificates, veri
             const outcome = await verifyResponse(
                 session,
                 responseEnvelope(vpToken, session.query),
-                trustedCertificates,
+                trustStore,
             );
             if (outcome.result) {
                 sessionStore.complete(state, { result: outcome.result });
@@ -63,6 +63,8 @@ export function responseRoutes({ config, sessionStore, trustedCertificates, veri
             sessionStore.complete(state, {
                 error: outcome.error,
                 unmatched: outcome.unmatched,
+                digestLog: outcome.digestLog,
+                digestMismatchIgnored: outcome.digestMismatchIgnored,
             });
             res.json({ redirect_uri: `${config.baseUrl}/?state=${encodeURIComponent(state)}#failed` });
         } catch (error) {

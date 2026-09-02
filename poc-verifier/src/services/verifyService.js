@@ -31,7 +31,7 @@ function isVerificationError(error) {
  * The unencrypted OpenID4VP 1.0 mDOC flow binds device authentication to a
  * handover transcript containing the verifier's client ID, nonce and callback.
  */
-export async function verifyResponse(session, envelope, trustedCertificates, dependencies = {}) {
+export async function verifyResponse(session, envelope, trustStore, dependencies = {}) {
     const verify = dependencies.verifyAuthorizationResponse ?? verifyAuthorizationResponse;
     const buildTranscript = dependencies.buildSessionTranscript
         ?? buildOpenID4VPHandoverSessionTranscript;
@@ -47,13 +47,24 @@ export async function verifyResponse(session, envelope, trustedCertificates, dep
             mdocSessionTranscript,
             nonce: session.nonce,
             responseUri: session.responseUri,
-            trustedCertificates,
+            // trustStore drives RFC 5280 chain validation; trustedCertificates is the
+            // deprecated byte-equality path and must stay empty so it's ignored.
+            trustedCertificates: [],
+            trustStore,
+            // DEBUG ONLY — opted into per-session via the frontend toggle.
+            allowDigestMismatch: session.allowDigestMismatch === true,
         });
+
+        if (result.parsed.digestMismatchIgnored) {
+            console.warn(`[SECURITY] digest mismatch ignored for state=${session.state}`);
+        }
 
         if (!result.valid) {
             return {
                 error: result.parsed.error ?? 'Credential verification did not satisfy the request.',
                 unmatched: result.match?.unmatched,
+                digestLog: result.parsed.digestLog,
+                digestMismatchIgnored: result.parsed.digestMismatchIgnored,
             };
         }
         return { result };

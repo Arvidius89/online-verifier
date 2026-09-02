@@ -38,10 +38,11 @@ export {
     ExpiredCredentialError,
     UnsupportedFormatError,
     MalformedCredentialError,
+    DigestMismatchError,
     NonceValidationError,
     HaipValidationError,
 } from './errors.js';
-export type { HaipValidationCode } from './errors.js';
+export type { HaipValidationCode, DigestLogEntry } from './errors.js';
 
 // Re-exports from @openeudi/dcql
 export { DcqlValidationError, DcqlMatchError } from '@openeudi/dcql';

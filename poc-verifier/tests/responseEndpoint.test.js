@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildOpenID4VPHandoverSessionTranscript } from '@openeudi/openid4vp';
+import { buildOpenID4VPHandoverSessionTranscript, StaticTrustStore } from '@openeudi/openid4vp';
 
 import { loadConfig } from '../src/config.js';
 import { createApp } from '../src/server.js';
@@ -32,7 +32,8 @@ async function requestSession(baseUrl) {
 describe('POST /response', () => {
     it('verifies a signed repository mDOC fixture through the direct_post flow', async () => {
         const issuerKey = await generateTestKeyMaterial();
-        const app = createApp(config, { trustedCertificates: [issuerKey.certDerBytes] });
+        const trustStore = new StaticTrustStore([issuerKey.certDerBytes]);
+        const app = createApp(config, { trustStore });
 
         await withServer(app, async (baseUrl) => {
             const request = await requestSession(baseUrl);

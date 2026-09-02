@@ -81,3 +81,34 @@ button {
 .unmatched {
   padding-left: 1.25rem;
 }
+
+.digest-log {
+  margin-top: 1rem;
+}
+
+.digest-log table {
+  font-size: 0.8rem;
+}
+
+.digest-hex {
+  font-family: ui-monospace, Consolas, monospace;
+  word-break: break-all;
+}
+
+.digest-mismatch {
+  background: rgba(220, 38, 38, 0.15);
+}
+
+.debug-toggle {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.insecure-banner {
+  font-weight: bold;
+  color: #7a1010;
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.5);
+  padding: 0.6rem 0.8rem;
+  border-radius: 4px;
+}

@@ -51,6 +51,16 @@ export interface ParseOptions {
      */
     expectedDocType?: string;
 
+    /**
+     * DEBUG ONLY — never enable in production. When `true`, an mDOC digest
+     * mismatch (ISO 18013-5 valueDigests) does not fail parsing; the parser
+     * continues through device-auth and claims mapping so the rest of the
+     * flow can still be inspected. The result carries `digestMismatchIgnored:
+     * true` and the mismatching entries in `digestLog` so callers MUST treat
+     * such a result as untrusted, regardless of `valid`.
+     */
+    allowDigestMismatch?: boolean;
+
     // ---- New in 0.5.0 ---------------------------------------------------
 
     /**

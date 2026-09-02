@@ -38,6 +38,28 @@ export class NonceValidationError extends Error {
     }
 }
 
+/** One computed-vs-expected digest comparison for a single mdoc attribute (ISO 18013-5 valueDigests). */
+export interface DigestLogEntry {
+    namespace: string;
+    elementIdentifier: string;
+    digestID: number;
+    expectedDigestHex: string;
+    computedDigestHex: string;
+    match: boolean;
+}
+
+/** Thrown when one or more mdoc IssuerSignedItem digests don't match the MSO valueDigests. Carries the full per-attribute log for diagnostics. */
+export class DigestMismatchError extends MalformedCredentialError {
+    readonly digestLog: DigestLogEntry[];
+
+    constructor(message: string, digestLog: DigestLogEntry[]) {
+        super(message);
+        this.name = 'DigestMismatchError';
+        this.digestLog = digestLog;
+        Object.setPrototypeOf(this, new.target.prototype);
+    }
+}
+
 export type HaipValidationCode =
     | 'EMPTY_QUERY'
     | 'UNSUPPORTED_FORMAT'

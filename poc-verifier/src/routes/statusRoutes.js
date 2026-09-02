@@ -23,6 +23,8 @@ export function statusRoutes({ sessionStore }) {
                 claims: displayClaims,
                 docType: parsed.docType,
                 issuer: parsed.issuer,
+                digestLog: parsed.digestLog,
+                digestMismatchIgnored: parsed.digestMismatchIgnored,
                 portrait: portrait instanceof Uint8Array
                     ? Buffer.from(portrait).toString('base64')
                     : undefined,
@@ -30,7 +32,13 @@ export function statusRoutes({ sessionStore }) {
             return;
         }
         if (session.status === 'failed') {
-            res.json({ status: 'failed', error: session.error, unmatched: session.unmatched });
+            res.json({
+                status: 'failed',
+                error: session.error,
+                unmatched: session.unmatched,
+                digestLog: session.digestLog,
+                digestMismatchIgnored: session.digestMismatchIgnored,
+            });
             return;
         }
         res.json({ status: 'pending' });
