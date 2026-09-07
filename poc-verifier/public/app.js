@@ -10,6 +10,7 @@ const panels = {
 const statusLine = document.getElementById('status-line');
 const qrImage = document.getElementById('qr-image');
 const requestUri = document.getElementById('request-uri');
+const openWalletButton = document.getElementById('btn-open-wallet');
 const qrCountdown = document.getElementById('qr-countdown');
 const resultHeading = document.getElementById('result-heading');
 const resultBody = document.getElementById('result-body');
@@ -18,6 +19,7 @@ const ignoreDigestErrorsToggle = document.getElementById('toggle-ignore-digest-e
 const POLL_INTERVAL_MS = 2000;
 let pollTimer = null;
 let countdownTimer = null;
+let authorizationRequest = '';
 
 function showPanel(name) {
     for (const [key, el] of Object.entries(panels)) {
@@ -201,7 +203,9 @@ async function requestPresentation() {
         const { state, qr, uri, expiresInSeconds } = await res.json();
 
         qrImage.src = qr;
-        requestUri.textContent = uri;
+        authorizationRequest = uri;
+        requestUri.href = authorizationRequest;
+        requestUri.textContent = authorizationRequest;
         showPanel('qr');
         setStatus('Waiting for wallet…');
         startPolling(state, expiresInSeconds);
@@ -209,6 +213,12 @@ async function requestPresentation() {
         setStatus(`Could not create request: ${err.message}`);
     }
 }
+
+openWalletButton.addEventListener('click', () => {
+    if (authorizationRequest) {
+        window.location.href = authorizationRequest;
+    }
+});
 
 document.getElementById('btn-request').addEventListener('click', () => {
     void requestPresentation();
