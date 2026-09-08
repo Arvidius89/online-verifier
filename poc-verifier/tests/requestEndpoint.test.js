@@ -4,7 +4,7 @@ import { createApp } from '../src/server.js';
 import { loadConfig } from '../src/config.js';
 
 const config = loadConfig({
-    BASE_URL: 'http://localhost:3000',
+    BASE_URL: 'https://c7db-85-145-238-236.ngrok-free.app',
     SESSION_TTL_MS: '60000',
     MDL_CLAIMS: 'family_name,given_name,age_over_18',
 });
@@ -40,7 +40,10 @@ describe('GET /api/request', () => {
         expect(url.searchParams.get('response_type')).toBe('vp_token');
         expect(url.searchParams.get('response_mode')).toBe('direct_post');
         expect(url.searchParams.get('response_uri')).toBe(config.responseUri);
-        expect(url.searchParams.get('client_id')).toBe(config.clientId);
+        expect(url.searchParams.get('client_id')).toBe(`redirect_uri:${config.responseUri}`);
+        expect(body.uri).toContain(
+            'client_id=redirect_uri%3Ahttps%3A%2F%2Fc7db-85-145-238-236.ngrok-free.app%2Fresponse',
+        );
         expect(url.searchParams.get('nonce')).toBeTruthy();
         expect(url.searchParams.get('state')).toBe(body.state);
 

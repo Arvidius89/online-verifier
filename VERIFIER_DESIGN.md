@@ -37,7 +37,7 @@ poc-verifier/
 | --- | --- | --- | --- |
 | Port | `PORT` | `3000` | |
 | Public base URL | `BASE_URL` | `http://localhost:3000` | Must be HTTPS + reachable for real wallets |
-| Client ID | `CLIENT_ID` | derived from BASE_URL host | PoC uses a plain client_id; HAIP deployments would use `x509_san_dns:<host>` |
+| Client ID | n/a | `redirect_uri:<response_uri>` | Derived automatically from `BASE_URL`; HAIP deployments use signed certificate-bound identifiers |
 | Session TTL | `SESSION_TTL_MS` | `300000` (5 min) | |
 | Trusted issuer dir | `TRUSTED_ISSUERS_DIR` | `./trusted-issuers` | `*.der` / `*.pem` files |
 | mDL claims | `MDL_CLAIMS` | `family_name,given_name,birth_date,age_over_18,portrait` | comma-separated |
@@ -221,7 +221,7 @@ Vanilla JS `fetch`; no framework, no bundler. Accessibility: semantic HTML,
 openid4vp://authorize?response_type=vp_token
   &response_mode=direct_post
   &response_uri=https%3A%2F%2Fverifier.example%2Fresponse
-  &client_id=verifier.example
+  &client_id=redirect_uri%3Ahttps%3A%2F%2Fverifier.example%2Fresponse
   &nonce=<uuid>
   &state=<uuid>
   &dcql_query=<url-encoded JSON above>

@@ -49,7 +49,7 @@ export function loadConfig(env = process.env) {
         return value.replace(/\/+$/, '');
     })();
 
-    const host = new URL(baseUrl).hostname;
+    const responseUri = `${baseUrl}/response`;
 
     return Object.freeze({
         port: (() => {
@@ -62,8 +62,7 @@ export function loadConfig(env = process.env) {
             return parsed;
         })(),
         baseUrl,
-        // CLIENT_ID defaults to the BASE_URL hostname (VERIFIER_DESIGN.md §1.1).
-        clientId: get('CLIENT_ID') || host,
+        clientId: `redirect_uri:${responseUri}`,
         sessionTtlMs: (() => {
             const value = get('SESSION_TTL_MS');
             if (value === undefined || value === '') return 300_000;
@@ -84,7 +83,7 @@ export function loadConfig(env = process.env) {
             return claims;
         })(),
         trustedIssuersDir: get('TRUSTED_ISSUERS_DIR') || './trusted-issuers',
-        responseUri: `${baseUrl}/response`,
+        responseUri,
     });
 }
 

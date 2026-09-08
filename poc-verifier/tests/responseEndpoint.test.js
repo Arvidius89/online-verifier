@@ -8,7 +8,6 @@ import { buildSignedMdoc } from '../../tests/fixtures/mdoc-helpers.js';
 
 const config = loadConfig({
     BASE_URL: 'http://localhost:3000',
-    CLIENT_ID: 'verifier.test',
     MDL_CLAIMS: 'family_name,given_name',
     SESSION_TTL_MS: '60000',
 });
