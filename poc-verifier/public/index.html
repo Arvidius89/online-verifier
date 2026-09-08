@@ -3,18 +3,24 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>mDL Verifier (PoC)</title>
+  <title>mDOC Verifier (PoC)</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main>
-    <h1>mDL Verifier <small>(proof of concept)</small></h1>
+    <h1>mDOC Verifier <small>(proof of concept)</small></h1>
 
     <!-- Panel 1: start -->
     <section id="panel-start">
       <p>
-        Request an ISO 18013-5 mobile driving licence (mDL) presentation from
-        an EUDI-compatible wallet using OpenID4VP.
+        Request an mDOC presentation from an EUDI-compatible wallet using OpenID4VP.
+      </p>
+      <p>
+        <label for="doctype-selector">Document type:</label>
+        <select id="doctype-selector">
+          <option value="org.iso.18013.5.1.mDL">mDL</option>
+          <option value="org.iso.23220.1.nl.kiwa.sampcert">Kiwa Sample Certificate</option>
+        </select>
       </p>
       <p class="debug-toggle">
         <label>
@@ -22,7 +28,7 @@
           Ignore digest verification errors (debug, insecure)
         </label>
       </p>
-      <button id="btn-request" type="button">Request mDL</button>
+      <button id="btn-request" type="button">Request mDOC</button>
     </section>
 
     <!-- Panel 2: QR code (Milestone 2 fills this in) -->
@@ -38,7 +44,7 @@
     <section id="panel-result" hidden>
       <h2 id="result-heading">Result</h2>
       <div id="result-body" aria-live="polite"></div>
-      <button id="btn-new-request" type="button">Request another mDL</button>
+      <button id="btn-new-request" type="button">Request another mDOC</button>
     </section>
 
     <p id="status-line" role="status" aria-live="polite"></p>

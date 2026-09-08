@@ -62,6 +62,29 @@ describe('GET /api/request', () => {
         expect(status).toBe(200);
         expect(body.state).toMatch(/^[0-9a-f-]{36}$/);
     });
+
+    it('builds a request for the selected Kiwa Sample Certificate doctype', async () => {
+        const { status, body } = await getJson(
+            createApp(config),
+            '/api/request?doctype=org.iso.23220.1.nl.kiwa.sampcert',
+        );
+        const url = new URL(body.uri.replace('openid4vp://', 'https://placeholder/'));
+        const dcql = JSON.parse(url.searchParams.get('dcql_query'));
+
+        expect(status).toBe(200);
+        expect(body.doctype).toBe('org.iso.23220.1.nl.kiwa.sampcert');
+        expect(dcql.credentials[0].meta.doctype_value)
+            .toBe('org.iso.23220.1.nl.kiwa.sampcert');
+        expect(dcql.credentials[0].claims).toContainEqual({
+            path: ['org.iso.23220.1.nl.kiwa.sampcert', 'family_name'],
+        });
+    });
+
+    it('rejects an unsupported doctype', async () => {
+        const { status, body } = await getJson(createApp(config), '/api/request?doctype=unknown');
+        expect(status).toBe(400);
+        expect(body).toEqual({ error: 'unsupported_doctype' });
+    });
 });
 
 describe('GET /api/status/:state', () => {

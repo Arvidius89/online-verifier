@@ -8,6 +8,7 @@ const baseSession = {
     clientId: 'verifier.test',
     responseUri: 'http://localhost:3000/response',
     query: { credentials: [{ id: 'mdl' }] },
+    doctype: 'org.iso.18013.5.1.mDL',
 };
 
 function makeStore(ttlMs = 60_000, now = () => 1_000_000) {
@@ -21,6 +22,7 @@ describe('SessionStore', () => {
         const session = store.get('state-1');
         expect(session.status).toBe('pending');
         expect(session.nonce).toBe('nonce-1');
+        expect(session.doctype).toBe('org.iso.18013.5.1.mDL');
         expect(session.allowDigestMismatch).toBe(false);
     });
 

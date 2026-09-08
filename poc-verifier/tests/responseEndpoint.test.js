@@ -28,6 +28,13 @@ async function requestSession(baseUrl) {
     return response.json();
 }
 
+async function requestKiwaSession(baseUrl) {
+    const response = await fetch(
+        `${baseUrl}/api/request?doctype=org.iso.23220.1.nl.kiwa.sampcert`,
+    );
+    return response.json();
+}
+
 describe('POST /response', () => {
     it('verifies a signed repository mDOC fixture through the direct_post flow', async () => {
         const issuerKey = await generateTestKeyMaterial();
@@ -101,6 +108,40 @@ describe('POST /response', () => {
                 docType: 'org.iso.18013.5.1.mDL',
                 issuer: { country: 'NL' },
                 portrait: 'AQI=',
+            });
+        });
+    });
+
+    it('uses the selected Kiwa namespace when exposing verified claims', async () => {
+        const verifyResponse = async () => ({
+            result: {
+                valid: true,
+                parsed: {
+                    claims: { ignored: true },
+                    namespacedClaims: {
+                        'org.iso.23220.1.nl.kiwa.sampcert': { sample_id: 'S-42' },
+                        'org.iso.18013.5.1': { wrong_namespace: true },
+                    },
+                    docType: 'org.iso.23220.1.nl.kiwa.sampcert',
+                },
+                match: {},
+            },
+        });
+        const app = createApp(config, { verifyResponse });
+
+        await withServer(app, async (baseUrl) => {
+            const request = await requestKiwaSession(baseUrl);
+            await fetch(`${baseUrl}/response`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ state: request.state, vp_token: 'base64url-mdoc-token' }),
+            });
+
+            const status = await fetch(`${baseUrl}/api/status/${request.state}`);
+            expect(await status.json()).toMatchObject({
+                status: 'done',
+                claims: { sample_id: 'S-42' },
+                docType: 'org.iso.23220.1.nl.kiwa.sampcert',
             });
         });
     });

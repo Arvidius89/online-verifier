@@ -40,9 +40,9 @@ export class SessionStore {
      * library, so a collision would indicate a bug or an attack.
      * @returns the stored session
      */
-    create({ state, nonce, clientId, responseUri, query, allowDigestMismatch = false }) {
-        if (!state || !nonce || !query) {
-            throw new TypeError('state, nonce and query are required');
+    create({ state, nonce, clientId, responseUri, query, doctype, allowDigestMismatch = false }) {
+        if (!state || !nonce || !query || !doctype) {
+            throw new TypeError('state, nonce, query and doctype are required');
         }
         if (this.#sessions.has(state)) {
             throw new Error(`session state collision: ${state}`);
@@ -53,6 +53,7 @@ export class SessionStore {
             clientId,
             responseUri,
             query,
+            doctype,
             allowDigestMismatch,
             createdAt: this.#now(),
             expiresAt: this.#now() + this.#ttlMs,

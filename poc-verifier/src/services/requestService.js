@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { createAuthorizationRequest } from '@openeudi/openid4vp';
 
-import { buildMdlQuery } from './queryBuilder.js';
+import { DEFAULT_DOCTYPE } from '../doctype-config.js';
+import { buildDocumentQuery } from './queryBuilder.js';
 
 /**
  * Build an unsigned OpenID4VP authorization request for an mDL presentation
@@ -16,8 +17,13 @@ import { buildMdlQuery } from './queryBuilder.js';
  * @param {boolean} [opts.allowDigestMismatch=false] DEBUG ONLY — see ParseOptions.allowDigestMismatch
  * @returns {{ uri: string, state: string, nonce: string, session: object }}
  */
-export function createPresentationRequest(config, sessionStore, { allowDigestMismatch = false } = {}) {
-    const query = buildMdlQuery(config.mdlClaims);
+export function createPresentationRequest(
+    config,
+    sessionStore,
+    { doctype = DEFAULT_DOCTYPE, allowDigestMismatch = false } = {},
+) {
+    const claims = config.claimsByDoctype?.[doctype] ?? config.mdlClaims;
+    const query = buildDocumentQuery(doctype, claims);
 
     const request = createAuthorizationRequest(
         {
@@ -35,6 +41,7 @@ export function createPresentationRequest(config, sessionStore, { allowDigestMis
         clientId: config.clientId,
         responseUri: config.responseUri,
         query: request.dcqlQuery,
+        doctype,
         allowDigestMismatch,
     });
 

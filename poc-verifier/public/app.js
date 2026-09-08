@@ -15,6 +15,7 @@ const qrCountdown = document.getElementById('qr-countdown');
 const resultHeading = document.getElementById('result-heading');
 const resultBody = document.getElementById('result-body');
 const ignoreDigestErrorsToggle = document.getElementById('toggle-ignore-digest-errors');
+const doctypeSelector = document.getElementById('doctype-selector');
 
 const POLL_INTERVAL_MS = 2000;
 let pollTimer = null;
@@ -197,7 +198,8 @@ async function requestPresentation() {
     setStatus('Creating authorization request…');
     try {
         const ignoreDigestErrors = ignoreDigestErrorsToggle?.checked === true;
-        const url = `/api/request?ignoreDigestErrors=${ignoreDigestErrors}`;
+        const doctype = doctypeSelector.value;
+        const url = `/api/request?doctype=${encodeURIComponent(doctype)}&ignoreDigestErrors=${ignoreDigestErrors}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`server responded ${res.status}`);
         const { state, qr, uri, expiresInSeconds } = await res.json();

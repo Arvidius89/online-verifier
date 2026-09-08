@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import QRCode from 'qrcode';
 
+import { DEFAULT_DOCTYPE, getDoctypeConfig } from '../doctype-config.js';
 import { createPresentationRequest } from '../services/requestService.js';
 
 /**
@@ -13,7 +14,16 @@ export function requestRoutes({ config, sessionStore }) {
     router.get('/api/request', async (req, res, next) => {
         try {
             const allowDigestMismatch = req.query.ignoreDigestErrors === 'true';
-            const { uri, state } = createPresentationRequest(config, sessionStore, { allowDigestMismatch });
+            const doctype = req.query.doctype || DEFAULT_DOCTYPE;
+            const definition = getDoctypeConfig(doctype);
+            if (!definition) {
+                res.status(400).json({ error: 'unsupported_doctype' });
+                return;
+            }
+            const { uri, state } = createPresentationRequest(config, sessionStore, {
+                doctype,
+                allowDigestMismatch,
+            });
 
             // Server-side QR as PNG data URL — zero frontend dependencies.
             const qr = await QRCode.toDataURL(uri, {
@@ -26,6 +36,8 @@ export function requestRoutes({ config, sessionStore }) {
                 state,
                 qr,
                 uri,
+                doctype,
+                label: definition.label,
                 expiresInSeconds: sessionStore.ttlSeconds(state),
             });
         } catch (err) {

@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 
 import {
+    buildDocumentQuery,
     buildMdlQuery,
     MDL_DOCTYPE,
     MDL_NAMESPACE,
     MDL_CREDENTIAL_ID,
 } from '../src/services/queryBuilder.js';
+
+const KIWA_DOCTYPE = 'org.iso.23220.1.nl.kiwa.sampcert';
 
 const CLAIMS = ['family_name', 'given_name', 'birth_date', 'age_over_18'];
 
@@ -39,5 +42,24 @@ describe('buildMdlQuery', () => {
         const query = buildMdlQuery(CLAIMS);
         expect(query.credential_sets).toBeUndefined();
         expect(query.credentials[0].claim_sets).toBeUndefined();
+    });
+});
+
+describe('buildDocumentQuery', () => {
+    it('builds a Kiwa Sample Certificate query with its doctype namespace', () => {
+        const query = buildDocumentQuery(KIWA_DOCTYPE, ['family_name']);
+        expect(query.credentials[0]).toMatchObject({
+            id: 'kiwa-sample-certificate',
+            format: 'mso_mdoc',
+            meta: { doctype_value: KIWA_DOCTYPE },
+        });
+        expect(query.credentials[0].claims).toEqual([
+            { path: [KIWA_DOCTYPE, 'family_name'] },
+        ]);
+    });
+
+    it('rejects an unsupported doctype', () => {
+        expect(() => buildDocumentQuery('com.example.unknown', ['family_name']))
+            .toThrow(/unsupported doctype/);
     });
 });

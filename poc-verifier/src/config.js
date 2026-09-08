@@ -3,6 +3,11 @@ import path from 'node:path';
 import process from 'node:process';
 import dotenv from 'dotenv';
 
+import {
+    DEFAULT_DOCTYPE,
+    SUPPORTED_DOCTYPES,
+} from './doctype-config.js';
+
 // 12-factor: all environment-dependent values come from process.env.
 // dotenv is loaded only when a .env file exists, so the same code runs
 // unchanged in Azure where App Settings inject real environment variables.
@@ -51,6 +56,20 @@ export function loadConfig(env = process.env) {
 
     const responseUri = `${baseUrl}/response`;
 
+    const mdlClaims = parseClaims(get('MDL_CLAIMS'), [
+        'family_name',
+        'given_name',
+        'birth_date',
+        'age_over_18',
+        'portrait',
+    ], 'MDL_CLAIMS');
+    const claimsByDoctype = Object.fromEntries(
+        Object.entries(SUPPORTED_DOCTYPES).map(([doctype, definition]) => [
+            doctype,
+            parseClaims(get(definition.claimsEnv), mdlClaims, definition.claimsEnv),
+        ]),
+    );
+
     return Object.freeze({
         port: (() => {
             const value = get('PORT');
@@ -72,19 +91,23 @@ export function loadConfig(env = process.env) {
             }
             return parsed;
         })(),
-        mdlClaims: (() => {
-            const value = get('MDL_CLAIMS');
-            const claims = value
-                ? value.split(',').map((s) => s.trim()).filter(Boolean)
-                : ['family_name', 'given_name', 'birth_date', 'age_over_18', 'portrait'];
-            if (claims.length === 0) {
-                throw new ConfigError('MDL_CLAIMS must list at least one claim');
-            }
-            return claims;
-        })(),
+        mdlClaims,
+        claimsByDoctype,
+        defaultDoctype: DEFAULT_DOCTYPE,
+        supportedDoctypes: Object.keys(SUPPORTED_DOCTYPES),
         trustedIssuersDir: get('TRUSTED_ISSUERS_DIR') || './trusted-issuers',
         responseUri,
     });
+}
+
+function parseClaims(value, fallback, envName) {
+    const claims = value === undefined || value === ''
+        ? fallback
+        : value.split(',').map((claim) => claim.trim()).filter(Boolean);
+    if (claims.length === 0) {
+        throw new ConfigError(`${envName} must list at least one claim`);
+    }
+    return claims;
 }
 
 export { ConfigError };

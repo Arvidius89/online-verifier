@@ -1,5 +1,7 @@
 import { Router } from 'express';
 
+import { getDoctypeConfig } from '../doctype-config.js';
+
 /**
  * GET /api/status/:state — polled by the browser while the wallet interacts
  * with the verifier directly (VERIFIER_DESIGN.md §2.3). Milestone 2 exposes
@@ -16,7 +18,8 @@ export function statusRoutes({ sessionStore }) {
         }
         if (session.status === 'done') {
             const parsed = session.result.parsed;
-            const claims = parsed.namespacedClaims?.['org.iso.18013.5.1'] ?? parsed.claims;
+            const namespace = getDoctypeConfig(session.doctype)?.namespace ?? session.doctype;
+            const claims = parsed.namespacedClaims?.[namespace] ?? parsed.claims;
             const { portrait, ...displayClaims } = claims;
             res.json({
                 status: 'done',

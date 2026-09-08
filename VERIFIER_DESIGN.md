@@ -1,6 +1,7 @@
-# Verifier Design — OpenID4VP mDL PoC
+# Verifier Design — OpenID4VP mDOC Verifier PoC
 
-Detailed component and data design for the minimal verifier application.
+Detailed component and data design for the minimal verifier application. The
+PoC supports one selected mDOC doctype per authorization request.
 Complements [ARCHITECTURE.md](ARCHITECTURE.md) (the "what/why") with the
 "how".
 
@@ -13,6 +14,7 @@ poc-verifier/
 ├── src/
 │   ├── server.js                 # entry point: express app, listen
 │   ├── config.js                 # env-driven configuration
+│   ├── doctype-config.js         # central supported doctype catalog
 │   ├── routes/
 │   │   ├── pageRoutes.js         # static frontend
 │   │   ├── requestRoutes.js      # GET /api/request
@@ -20,7 +22,7 @@ poc-verifier/
 │   │   └── statusRoutes.js       # GET /api/status/:state
 │   ├── services/
 │   │   ├── sessionStore.js       # in-memory sessions (TTL, one-shot)
-│   │   ├── queryBuilder.js       # mDL DCQL query via buildHaipQuery
+│   │   ├── queryBuilder.js       # mDOC DCQL query via buildHaipQuery
 │   │   ├── requestService.js     # createAuthorizationRequest wrapper
 │   │   └── verifyService.js      # verifyAuthorizationResponse wrapper
 │   └── trust/
@@ -40,7 +42,22 @@ poc-verifier/
 | Client ID | n/a | `redirect_uri:<response_uri>` | Derived automatically from `BASE_URL`; HAIP deployments use signed certificate-bound identifiers |
 | Session TTL | `SESSION_TTL_MS` | `300000` (5 min) | |
 | Trusted issuer dir | `TRUSTED_ISSUERS_DIR` | `./trusted-issuers` | `*.der` / `*.pem` files |
+| Supported doctypes | `doctype-config.js` | mDL and Kiwa Sample Certificate | extend the central catalog |
 | mDL claims | `MDL_CLAIMS` | `family_name,given_name,birth_date,age_over_18,portrait` | comma-separated |
+| Kiwa claims | `KIWA_SAMPCERT_CLAIMS` | same as mDL claims | optional comma-separated override |
+
+The central catalog contains the doctype identifier, credential id, namespace,
+UI label and claims environment variable. It currently supports:
+
+| Label | Doctype | Namespace |
+| --- | --- | --- |
+| mDL | `org.iso.18013.5.1.mDL` | `org.iso.18013.5.1` |
+| Kiwa Sample Certificate | `org.iso.23220.1.nl.kiwa.sampcert` | `org.iso.23220.1.nl.kiwa.sampcert` |
+
+To add a future doctype, add one entry to `doctype-config.js`, give it a
+credential id, namespace, label and claims environment variable, then provide
+the claims in the environment. The request, session, verification and status
+flows are doctype-generic.
 
 ### 1.2 `services/sessionStore.js`
 
@@ -72,9 +89,9 @@ export function buildMdlQuery(claims) {
 }
 ```
 
-`buildHaipQuery` auto-namespaces claim paths to `org.iso.18013.5.1` for the
-mDL doctype (`HAIP_DOCTYPE_NAMESPACES`), so claim paths on the wire are
-`['org.iso.18013.5.1', 'family_name']` etc.
+`buildDocumentQuery(doctype, claims)` selects the credential metadata and
+namespace from the central catalog. `buildMdlQuery` remains as a compatibility
+wrapper. Claim paths on the wire therefore use the selected doctype namespace.
 
 ### 1.4 `services/requestService.js`
 
@@ -116,7 +133,7 @@ Claim extraction for display:
 
 ```js
 // mDOC claims are namespace-grouped:
-const ns = result.parsed.namespacedClaims?.['org.iso.18013.5.1'] ?? {};
+const ns = result.parsed.namespacedClaims?.[selectedDoctypeNamespace] ?? {};
 // → { family_name: 'MUSTERMANN', given_name: 'ERIKA', age_over_18: true, ... }
 ```
 
@@ -136,11 +153,13 @@ const ns = result.parsed.namespacedClaims?.['org.iso.18013.5.1'] ?? {};
 
 ### 2.1 `GET /api/request`
 
-1. Build the mDL DCQL query.
-2. Build the authorization request (`nonce`, auto `state`).
-3. Store session `{ state, nonce, query, status: 'pending', expiresAt }`.
-4. Render `request.uri` to a PNG data URL with `qrcode`.
-5. Respond `200 { state, qr, uri }`.
+1. Read and validate the optional `doctype` query parameter; omitted values
+  default to mDL.
+2. Build the selected mDOC DCQL query.
+3. Build the authorization request (`nonce`, auto `state`).
+4. Store session `{ state, nonce, doctype, query, status: 'pending', expiresAt }`.
+5. Render `request.uri` to a PNG data URL with `qrcode`.
+6. Respond `200 { state, qr, uri, doctype, label }`.
 
 Errors: `500` on unexpected failure; there is no user input to validate.
 
@@ -182,7 +201,7 @@ wallet did its part; validation simply failed); unexpected → `500`.
 
 Single page, three panels toggled by state:
 
-1. **Start panel** — explanation text + "Request mDL" button.
+1. **Start panel** — explanation text, doctype dropdown and "Request mDOC" button.
 2. **QR panel** — QR image + copyable `openid4vp://` URI + countdown to
    session expiry. Polls `/api/status/:state` every 2 s.
 3. **Result panel** —

@@ -1,10 +1,11 @@
-# Architecture — Minimal OpenID4VP mDL Verifier PoC
+# Architecture — Minimal OpenID4VP mDOC Verifier PoC
 
 ## 1. Overview
 
-A minimal verifier web application that requests an ISO 18013-5 mDL (mobile
-driving licence) from an EUDI-compatible wallet via OpenID4VP 1.0, validates
-the returned Verifiable Presentation, and displays the disclosed claims.
+A minimal verifier web application that requests one selected mDOC from an
+EUDI-compatible wallet via OpenID4VP 1.0, validates the returned Verifiable
+Presentation, and displays the disclosed claims. The supported choices are
+mDL and Kiwa Sample Certificate.
 
 The application is a thin orchestration layer over the
 `@openeudi/openid4vp` library in this repository — **no library code is
@@ -46,7 +47,7 @@ delegated to the library.
 │                                                                  │
 │  services/                                                       │
 │   ├─ sessionStore.js   Map<state, Session>, TTL, one-shot        │
-│   ├─ queryBuilder.js   buildHaipQuery (mso_mdoc / mDL)           │
+│   ├─ queryBuilder.js   buildHaipQuery (mso_mdoc / selected type) │
 │   ├─ requestService.js createAuthorizationRequest                │
 │   └─ verifyService.js  verifyAuthorizationResponse               │
 │                                                                  │
@@ -63,7 +64,7 @@ delegated to the library.
                                │ POST /response (direct_post)
 ┌──────────────────────────────┴───────────────────────────────────┐
 │                     EUDI Wallet (holder device)                  │
-│              scans QR → consent → presents mDL mDOC              │
+│              scans QR → consent → presents selected mDOC         │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -77,7 +78,7 @@ sequenceDiagram
     participant L as openid4vp lib
 
     U->>V: GET /api/request
-    V->>L: buildHaipQuery(mDL claims)
+   V->>L: buildHaipQuery(selected doctype + claims)
     V->>L: createAuthorizationRequest(clientId, responseUri, nonce)
     V->>V: store Session{state, nonce, query, status: pending}
     V-->>U: { state, qrDataUrl(openid4vp://authorize?...) }
@@ -97,7 +98,7 @@ sequenceDiagram
 | Method | Path | Purpose | Notes |
 | --- | --- | --- | --- |
 | GET | `/` | Serve `public/index.html` | "Verify my mDL" button |
-| GET | `/api/request` | Create session, return `{ state, qr, uri }` | QR as PNG data URL |
+| GET | `/api/request` | Create session, return `{ state, qr, uri, doctype, label }` | Optional `?doctype=...`; defaults to mDL |
 | POST | `/response` | Wallet `direct_post` callback | `application/x-www-form-urlencoded`; fields `vp_token`, `state`, (or `response` JWE in the encrypted variant) |
 | GET | `/api/status/:state` | Poll verification result | `{ status: 'pending' \| 'done' \| 'failed', claims?, error? }` |
 
@@ -114,6 +115,7 @@ interface Session {
   nonce: string;            // UUID, replay protection / device binding
   clientId: string;
   responseUri: string;
+   doctype: string;            // exactly one selected mDOC doctype
   query: DcqlQuery;         // the exact query sent to the wallet
   createdAt: number;
   expiresAt: number;        // createdAt + 5 min
@@ -132,7 +134,7 @@ Rules:
 
 | Verifier concern | Library call | Module |
 | --- | --- | --- |
-| DCQL query for mDL | `buildHaipQuery({ credentialId: 'mdl', format: 'mso_mdoc', doctypeValue: 'org.iso.18013.5.1.mDL', claims: [...] })` | `src/haip.ts` |
+| DCQL query for selected mDOC | `buildHaipQuery({ credentialId, format: 'mso_mdoc', doctypeValue, claims })` | `src/haip.ts` + `poc-verifier/src/doctype-config.js` |
 | Authorization request | `createAuthorizationRequest({ clientId, responseUri, nonce }, query)` → `{ uri, state, dcqlQuery }` | `src/authorization.ts` |
 | Response validation | `verifyAuthorizationResponse({ vp_token }, query, { nonce, trustedCertificates })` | `src/verify.ts` |
 | Issuer trust (PoC) | `trustedCertificates: [issuerCertDerBytes]` option | `src/parsers/*` |
