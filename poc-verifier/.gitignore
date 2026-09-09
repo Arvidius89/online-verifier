@@ -5,5 +5,8 @@
 node_modules/
 dist/
 
+# VCM dashboard build output (built from vcm/ via `npm run build`)
+public/vcm/
+
 # Logs
 *.log

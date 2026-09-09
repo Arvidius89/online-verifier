@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+@import '@fragment_ui/tokens';
+
+/*
+ * Fragment UI ships compiled classes inside node_modules, which Tailwind v4
+ * skips by default. Register the package as a source so its utility classes
+ * (e.g. bg-[color:var(--color-brand-primary)]) are generated.
+ */
+@source '../node_modules/@fragment_ui/ui';
+
+/*
+ * Vessel Compliance Manager — light mode only (enforced via <html data-theme="light">).
+ * Status colors come from Fragment UI semantic tokens:
+ *   --color-status-success-{base,bg,fg,border,muted}
+ *   --color-status-warning-{base,bg,fg,border,muted}
+ *   --color-status-error-{base,bg,fg,border,muted}
+ *   --color-status-info-{base,bg,fg,border,muted}
+ * The -fg variants are the AA-safe text colors on light backgrounds.
+ */
+
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-fg-base);
+  font-family: var(--typography-font-sans);
+  margin: 0;
+}
